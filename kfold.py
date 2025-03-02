@@ -1,70 +1,84 @@
 import random
+from sklearn.linear_model import LinearRegression
 
 def kFold(k, x, y):
-
     # create k "even" sets of data
     xgroups, ygroups = getGroups(k, x, y)
 
-    # take out one group to use as test data
-    # use the remaing groups as training
-
-    # there will be a total of k evaluation scores
-    evalScore = 0
-    testGroups = []
-    trainingGroupLists = []
-
-    #ex test group = [[1, 2, 3]  ]
-    #ex training group list = [[[2, 4, 6], [3, 5, 7]]  ]
-
-
-
-    # [1, 2, 3, 4, 5]
-
+    testGroupsX = []
+    trainingGroupListsX = []
+    testGroupsY = []
+    trainingGroupListsY = []
 
     for i in range(k):
-        testGroups.append(xgroups[i])
-        trainingGroupLists.append(xgroups[0:i] + xgroups[i+1:len(xgroups)])
-    
-    print(testGroups)
-    print(trainingGroupLists)
+        testGroupsX.append(xgroups[i])
+        trainingGroupListsX.append(xgroups[0:i] + xgroups[i+1:])
+        testGroupsY.append(ygroups[i])
+        trainingGroupListsY.append(ygroups[0:i] + ygroups[i+1:])
 
+    evalScore = 0
 
+    for i in range(k):
+        newX = []
+        newY = []
+
+        for j in range(len(trainingGroupListsX[i])):
+            newX += trainingGroupListsX[i][j]
+            newY += trainingGroupListsY[i][j]
+        
+        # Convert lists to 2D arrays (needed for LinearRegression)
+        # Reshaping each element of newX to be a 2D list
+        newX = [[xi] for xi in newX]
+        newY = [[yi] for yi in newY]
+
+        # Create Linear Regression model (fitting model)
+        reg = LinearRegression().fit(newX, newY)
+        
+        # Predict with testGroup
+        # Reshape test data to 2D list
+        testX = [[xi] for xi in testGroupsX[i]]  
+        predictedY = reg.predict(testX)
+
+        # Calculate the differences between actual and predicted values
+        # Flatten to 1D for comparison
+        differences = abs(testGroupsY[i] - predictedY.flatten())  
+
+        evalScore += sum(differences)
+
+    return evalScore
 
 def getGroups(k, x, y):
-    indicies = []
+    indicies = list(range(len(x)))
 
-    for i in range(len(x)):
-        indicies.append(i)
-
-    
-    xgroups = [] # list of groups of x
-    ygroups = [] # list of groups of y
+    xgroups = []  # List of groups of x
+    ygroups = []  # List of groups of y
 
     for i in range(k):
         xgroups.append([])
         ygroups.append([])
 
-
     for i in range(len(x)):
-
         random_index = random.randrange(len(indicies))
         num = indicies.pop(random_index)
 
         xgroups[i % k].append(x[num])
         ygroups[i % k].append(y[num])
-    
+
     return (xgroups, ygroups)
 
-
-
 def main():
+    x = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    y = [i ** 2 for i in x]
+    result = kFold(3, x, y)
 
-    x = [1, 2, 3, 4, 5]
-    y = [2, 4, 6, 8, 10]
+    # the larger the Eval score, the poorer the model is
+    print("Eval Score (non-linear data):", result)
 
-    kFold(3, x, y)
-
-
+    x = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    y = [i * 2 for i in x]
+    result = kFold(3, x, y)
+    # the smaller the Eval score, the better the model is
+    print("Eval Score (linear data):", result)
 
 if __name__ == "__main__":
     main()
